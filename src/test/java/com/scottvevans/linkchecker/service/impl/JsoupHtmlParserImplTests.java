@@ -1,12 +1,15 @@
-package com.scottvevans.linkchecker.service;
+package com.scottvevans.linkchecker.service.impl;
 
-import com.scottvevans.linkchecker.service.impl.JsoupHtmlParserImpl;
+import com.scottvevans.linkchecker.service.HtmlParser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
+
+import static com.scottvevans.linkchecker.service.impl.HtmlHelper.fragment;
+import static com.scottvevans.linkchecker.service.impl.HtmlHelper.page;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -103,37 +106,5 @@ public class JsoupHtmlParserImplTests {
 
     var pageWithBaseHref = page(EBAY_INC_BASE, expected);
     assertEquals(expected, parser.findLinks(EBAY_INC_BASE, pageWithBaseHref), "multiple links, with base href");
-  }
-
-  private static String page(String baseHref, List<String> links) {
-    var html = new StringBuilder();
-    html.append("<html>");
-    html.append("<head>");
-    if (baseHref != null) {
-      html.append("<base href=\"");
-      html.append(baseHref);
-      html.append("\" />");
-    }
-    html.append("</head>");
-    html.append("<body>");
-    html.append(fragment(links));
-    html.append("</body>");
-    html.append("/<html>");
-
-    return html.toString();
-  }
-
-  private static String fragment(List<String> links) {
-    var html = new StringBuilder();
-
-    html.append("<div>");
-    for (var link : links) {
-      html.append("<a href=\"");
-      html.append(link);
-      html.append("\">link text</a>");
-    }
-    html.append("</div>");
-
-    return html.toString();
   }
 }
