@@ -10,19 +10,19 @@ import java.util.Set;
 public interface HtmlParser {
 
   /** Given a list of links from an implementation, normalizes them into a set of unique URIs */
-  default Set<String> findUniqueLinks(String url, String html) {
-    final List<String> links = findLinks(url, html);
+  default Set<String> findUniqueLinks(String uri, String html) {
+    final List<String> links = findLinks(uri, html);
     final Set<String> set = new LinkedHashSet<>();
 
     for (var link: links) {
-      set.add(URIHelper.normalizeUrl(link));
+      set.add(URIHelper.normalizeURI(link));
     }
 
-    set.remove(URIHelper.normalizeUrl(url));
+    set.remove(URIHelper.normalizeURI(uri));
 
     return set;
   }
 
   /** Find all a href links in the html, including internal and external links */
-  List<String> findLinks(String url, String html);
+  List<String> findLinks(String uri, String html);
 }

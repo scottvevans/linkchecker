@@ -36,7 +36,7 @@ public class JsoupHtmlParserImplTests {
     parser = null;
   }
 
-  @Test void testFindUniqueStrings() {
+  @Test void testFindUniqueLinks() {
     var links = List.of(COMPANY, COMPANY_FRAGMENT);
     var html = fragment(links);
     var expected = Set.of(COMPANY_ABS);
@@ -51,7 +51,7 @@ public class JsoupHtmlParserImplTests {
   }
 
   @Test
-  void shouldFindAndResolveRelativeInternalStringInHtml() {
+  void shouldFindAndResolveRelativeInternalLinkInHtml() {
     var links = List.of(COMPANY, COMPANY_FRAGMENT);
     var html = fragment(links);
     var expected = List.of(COMPANY_ABS, COMPANY_FRAGMENT_ABS);
@@ -59,7 +59,7 @@ public class JsoupHtmlParserImplTests {
     assertEquals(expected, actual, "ebay our company overview relative link");
   }
   @Test
-  void shouldFindInternalAbsoluteStringInHtml() {
+  void shouldFindInternalAbsoluteLinkInHtml() {
     var expected = List.of(COMPANY_ABS);
     var html = fragment(expected);
     var actual = parser.findLinks(EBAY_INC_BASE, html);
@@ -67,7 +67,7 @@ public class JsoupHtmlParserImplTests {
   }
 
   @Test
-  void shouldFindExternalStringInHtml() {
+  void shouldFindExternalLinkInHtml() {
     var expected = List.of(GOOGLE_ABOUT_US);
     var html = fragment(expected);
     var actual = parser.findLinks(EBAY_INC_BASE, html);
@@ -75,27 +75,27 @@ public class JsoupHtmlParserImplTests {
   }
 
   @Test
-  void shouldThrowIllegalArgumentExceptionsForInvalidUrl() {
+  void shouldThrowIllegalArgumentExceptionsForInvalidURI() {
     var links = List.of(COMPANY);
     var html = fragment(links);
     try {
       parser.findLinks(null, html);
-      fail("should throw an IllegalArgumentException if url is null");
+      fail("should throw an IllegalArgumentException if uri is null");
     } catch (IllegalArgumentException ignored) {}
 
     try {
       parser.findLinks("", html);
-      fail("should throw an IllegalArgumentException if url is empty String");
+      fail("should throw an IllegalArgumentException if uri is empty String");
     } catch (IllegalArgumentException ignored) {}
 
     try {
-      parser.findLinks("badurl.html", html);
-      fail("should throw an IllegalArgumentException if url is malformed");
+      parser.findLinks("baduri.html", html);
+      fail("should throw an IllegalArgumentException if uri is malformed");
     } catch (IllegalArgumentException ignored) {}
   }
 
   @Test
-  void shouldFindMultipleStringsInPage() {
+  void shouldFindMultipleLinksInPage() {
     var expected = List.of(GOOGLE_ABOUT_US, COMPANY_ABS);
 
     var pageNoBaseHref = page(null, expected);

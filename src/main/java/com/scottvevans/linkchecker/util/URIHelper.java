@@ -13,34 +13,34 @@ public class URIHelper {
   private static final String PARAM_REGEX = "^[a-zA-Z_][^=]*=[^&]+$";
   private static final Predicate<String> IS_VALID_PARAM = Pattern.compile(PARAM_REGEX).asMatchPredicate();
 
-  public static String normalizeUrl(final String url) {
-    String normalizedUrl = removeFragment(url);
-    final int queryStringIndex = normalizedUrl.indexOf('?');
+  public static String normalizeURI(final String uri) {
+    String normalizedURI = removeFragment(uri);
+    final int queryStringIndex = normalizedURI.indexOf('?');
 
     if (queryStringIndex != -1) {
-      if (queryStringIndex + 1 == normalizedUrl.length()) {
-        normalizedUrl = normalizedUrl.substring(0, queryStringIndex);
+      if (queryStringIndex + 1 == normalizedURI.length()) {
+        normalizedURI = normalizedURI.substring(0, queryStringIndex);
       } else {
-        String queryString = normalizedUrl.substring(queryStringIndex + 1);
+        String queryString = normalizedURI.substring(queryStringIndex + 1);
         Optional<String> sortedQueryStringMaybe = getSortedQueryString(queryString);
 
         if (sortedQueryStringMaybe.isEmpty()) {
-          normalizedUrl = normalizedUrl.substring(0, queryStringIndex);
+          normalizedURI = normalizedURI.substring(0, queryStringIndex);
         } else {
-          normalizedUrl = normalizedUrl.substring(0, queryStringIndex + 1) + sortedQueryStringMaybe.get();
+          normalizedURI = normalizedURI.substring(0, queryStringIndex + 1) + sortedQueryStringMaybe.get();
         }
       }
     }
 
-    return normalizedUrl;
+    return normalizedURI;
   }
 
-  public static String removeFragment(String url) {
-    final int index = url.indexOf('#');
+  public static String removeFragment(String uri) {
+    final int index = uri.indexOf('#');
     if (index != -1) {
-      url = url.substring(0, index);
+      uri = uri.substring(0, index);
     }
-    return url;
+    return uri;
   }
 
   public static Optional<String> getSortedQueryString(final String queryString) {
