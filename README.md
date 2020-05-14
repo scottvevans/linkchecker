@@ -14,6 +14,7 @@
 ## To run docker image
 1. docker pull scottvevans/linkchecker:latest
 2. docker run -p 8080:8080 scottvevans/linkchecker:latest
+3. open http://localhost:8080/swagger-ui.html
 
 *Prerequisite required to run: [docker](https://www.docker.com/get-started)
 
