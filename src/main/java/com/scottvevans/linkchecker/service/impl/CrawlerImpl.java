@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class CrawlerImpl implements Crawler {
+  private final int MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
   private final HtmlParser parser;
   private final WebClient webClient;
@@ -31,7 +33,13 @@ public class CrawlerImpl implements Crawler {
   @Autowired
   public CrawlerImpl(HtmlParser parser) {
     this.parser = parser;
-    this.webClient = WebClient.create();
+    this.webClient = WebClient.builder()
+        .exchangeStrategies(ExchangeStrategies.builder()
+            .codecs(clientCodecConfigurer ->
+                clientCodecConfigurer
+                    .defaultCodecs()
+                    .maxInMemorySize(MAX_FILE_SIZE_BYTES))
+            .build()).build();
   }
 
   @Override
@@ -84,8 +92,9 @@ public class CrawlerImpl implements Crawler {
 
   /** Retrieves all URIs in the set asynchronously in parallel */
   private Flux<PageResponse> getAll(Set<String> URIs) {
-    log.debug("getAll {}", URIs);
-    return Flux.fromIterable(URIs).flatMap(uri -> getPageResponse(uri).subscribeOn(Schedulers.parallel()));
+    log.info("getAll {}", URIs);
+    return Flux.fromIterable(URIs).flatMap(uri ->
+        getPageResponse(uri).subscribeOn(Schedulers.parallel()));
   }
 
   /** Attempts to retrieve the uri, and populates a PageResponse with the outcome */
@@ -106,11 +115,12 @@ public class CrawlerImpl implements Crawler {
 
   /** Converts a raw ClientRequest from the WebClient into our custom PageResponse value object */
   private Mono<PageResponse> toPageResponse(String uri, ClientResponse response) {
-    log.debug("toPageResponse: {}", uri);
+    log.info("toPageResponse: {}", uri);
     try {
       HttpStatus status = response.statusCode();
       HttpHeaders headers = response.headers().asHttpHeaders();
-      log.debug("toPageResponse uri: {} status: {} headers: {}", uri, status, headers);
+      log.debug("toPageResponse status: {} ", status);
+      log.debug("toPageResponse headers: {}", headers);
 
       if (status.is2xxSuccessful())
         return handleSuccessful(uri, response);
@@ -121,7 +131,7 @@ public class CrawlerImpl implements Crawler {
 
     } catch (RuntimeException ex) {
       String msg = String.format("processing %s failed due to unexpected error %s", uri, ex);
-      log.error(msg);
+      log.error(msg, ex);
       return Mono.just(
           new PageResponse(uri, -1, msg, Collections.emptySet()));
     }
@@ -138,8 +148,9 @@ public class CrawlerImpl implements Crawler {
           .map(html ->
               new PageResponse(uri, status.value(), status.getReasonPhrase(), parser.findUniqueLinks(uri, html)))
           .onErrorResume(ex -> {
-            var msg = String.format("ERROR: processing failed due to %s: %s",
-                ex.getClass().getSimpleName(), ex.getMessage());
+            var msg = String.format("processing response from %s failed due to %s: %s",
+                uri, ex.getClass().getSimpleName(), ex.getMessage());
+            log.error(msg, ex);
             return Mono.just(new PageResponse(uri, status.value(), msg, Collections.emptySet()));
           });
     } else {
