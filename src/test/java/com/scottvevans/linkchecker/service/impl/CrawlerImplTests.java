@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 import static com.scottvevans.linkchecker.service.impl.HtmlHelper.page;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,7 +27,7 @@ public class CrawlerImplTests {
 
   private static MockWebServer mockWebServer;
   private Crawler crawler;
-  private String baseUri;
+  private String baseURI;
 
   @BeforeAll
   static void setUp() throws IOException {
@@ -42,11 +43,16 @@ public class CrawlerImplTests {
   @BeforeEach
   void init() {
     crawler = new CrawlerImpl(new JsoupHtmlParserImpl());
-    baseUri = String.format("http://localhost:%s", mockWebServer.getPort());
+    baseURI = String.format("http://localhost:%s", mockWebServer.getPort());
   }
 
-  @Test
-  void testSetUpAndTearDownWorks() {}
+  private String absURI(String path) {
+    return String.format("%s/%s", baseURI, path);
+  }
+
+  private Set<String> absURIs(List<String> paths) {
+    return paths.stream().map(this::absURI).collect(toSet());
+  }
 
   private MockResponse okHtmlPage(String body) {
     return new MockResponse()
@@ -56,37 +62,54 @@ public class CrawlerImplTests {
   }
 
   @Test
+  void testSetUpAndTearDownWorks() {}
+
+  @Test
   void testDepth1() throws Exception {
     var rootPageLinks = List.of("a.html", "b.html");
-    var rootPage = page(baseUri, rootPageLinks);
+    var rootPage = page(baseURI, rootPageLinks);
     var rootWebServerResponse = okHtmlPage(rootPage);
-    var rootPageResponse =
-        new PageResponse(baseUri, 200, "OK", Set.copyOf(rootPageLinks));
 
-    var aPageUri = baseUri + "/a.html";
+    var aPageURI = absURI("a.html");
     var aPageLinks = List.of("aa.html", "ab.html");
-    var aPage = page(aPageUri, aPageLinks);
+    var aPage = page(aPageURI, aPageLinks);
     var aWebServerResponse = okHtmlPage(aPage);
-    var aPageResponse =
-        new PageResponse(aPageUri,200, "OK", Set.copyOf(aPageLinks));
 
-    var bPageUri = baseUri + "/b.html";
+    var bPageURI = absURI("b.html");
     var bPageLinks = List.of("ba.html", "bb.html");
-    var bPage = page(bPageUri, bPageLinks);
+    var bPage = page(bPageURI, bPageLinks);
     var bWebServerResponse = okHtmlPage(bPage);
-    var bPageResponse =
-        new PageResponse(bPageUri, 200, "OK", Set.copyOf(bPageLinks));
 
     mockWebServer.enqueue(rootWebServerResponse);
     mockWebServer.enqueue(aWebServerResponse);
     mockWebServer.enqueue(bWebServerResponse);
 
-    Mono<CrawlerReport> reportMono = crawler.crawl(1, baseUri);
+    var expectedBaseURIResponse =
+        new PageResponse(baseURI, 200, "OK", absURIs(rootPageLinks));
+
+    var expectedResponses1 = Set.of(
+        expectedBaseURIResponse,
+        new PageResponse(aPageURI, 200, "OK", absURIs(aPageLinks)),
+        new PageResponse(bPageURI, 200, "OK", absURIs(bPageLinks))
+    );
+
+    // this alternative is necessary because order of responses at a particular depth
+    // in a crawl is non-determinant due to the requests executing in parallel,
+    // but the mockServer always returns the page content in the order it was enqueued
+    var expectedResponses2 = Set.of(
+        expectedBaseURIResponse,
+        new PageResponse(aPageURI, 200, "OK", absURIs(bPageLinks)),
+        new PageResponse(bPageURI, 200, "OK", absURIs(aPageLinks))
+    );
+
+    Mono<CrawlerReport> reportMono = crawler.crawl(1, baseURI);
     StepVerifier.create(reportMono)
         .expectNextMatches(report ->
             report.getDepth() == 1 &&
             report.getTotalPagesCrawled() == 3 &&
-            report.getRootUri().equals(baseUri)
+            report.getRootURI().equals(baseURI) &&
+            (Set.copyOf(report.getResponses()).equals(expectedResponses1) ||
+             Set.copyOf(report.getResponses()).equals(expectedResponses2))
         ).verifyComplete();
 
     var rootRecordedRequest = mockWebServer.takeRequest();

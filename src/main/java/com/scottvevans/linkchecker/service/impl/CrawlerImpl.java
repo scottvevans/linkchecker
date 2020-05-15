@@ -20,7 +20,10 @@ import reactor.core.scheduler.Schedulers;
 
 import java.net.URI;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 @Service
 @Slf4j
@@ -34,12 +37,13 @@ public class CrawlerImpl implements Crawler {
   public CrawlerImpl(HtmlParser parser) {
     this.parser = parser;
     this.webClient = WebClient.builder()
-        .exchangeStrategies(ExchangeStrategies.builder()
-            .codecs(clientCodecConfigurer ->
-                clientCodecConfigurer
+        .exchangeStrategies(
+            ExchangeStrategies.builder()
+                .codecs(clientCodecConfigurer -> clientCodecConfigurer
                     .defaultCodecs()
                     .maxInMemorySize(MAX_FILE_SIZE_BYTES))
-            .build()).build();
+                .build()
+        ).build();
   }
 
   @Override
@@ -58,7 +62,7 @@ public class CrawlerImpl implements Crawler {
     int pages = responses.size();
 
     Map<Integer, List<PageResponse>> groupedByStatus =
-        responses.stream().collect(Collectors.groupingBy(PageResponse::getHttpStatus));
+        responses.stream().collect(groupingBy(PageResponse::getHttpStatus));
 
     Map<Integer, Integer> counts = new HashMap<>();
     groupedByStatus.forEach((key, list) -> counts.put(key, list.size()));
@@ -84,7 +88,7 @@ public class CrawlerImpl implements Crawler {
                 .stream()
                 .flatMap(pr -> pr.getLinks().stream())
                 .filter(uri -> !visited.contains(uri))
-                .collect(Collectors.toSet());
+                .collect(toSet());
             return crawl(responses, visited, maxDepth, nextToVisit, currentDepth + 1);
           }
         });
@@ -92,7 +96,8 @@ public class CrawlerImpl implements Crawler {
 
   /** Retrieves all URIs in the set asynchronously in parallel */
   private Flux<PageResponse> getAll(Set<String> URIs) {
-    log.info("getAll {}", URIs);
+    log.info("getAll: {}", URIs.size() <= 5 ? URIs :
+        URIs.stream().limit(5).collect(joining(",", "[", "," + (URIs.size() - 5) + " more...]")));
     return Flux.fromIterable(URIs).flatMap(uri ->
         getPageResponse(uri).subscribeOn(Schedulers.parallel()));
   }

@@ -9,7 +9,7 @@ import java.util.Map;
 @Data
 @RequiredArgsConstructor
 public class CrawlerReport {
-  private final String rootUri;
+  private final String rootURI;
   private final int depth;
   private final long elaspedTimeInMillis;
   private final int totalPagesCrawled;
